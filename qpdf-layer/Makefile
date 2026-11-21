@@ -16,7 +16,7 @@ FFMPEG_LAYER_DIR ?= ../build/layer
 clean:
 	rm -rf build
 
-build/layer/bin/qpdf:
+build/layer/bin/qpdf: Makefile
 	rm -rf build/qpdf-src build/layer
 	mkdir -p build/qpdf-src build/layer/bin build/layer/lib
 	curl -fL -o build/qpdf.zip $(QPDF_URL)
@@ -25,6 +25,7 @@ build/layer/bin/qpdf:
 	cp -a build/qpdf-src/lib/. build/layer/lib/
 	chmod +x build/layer/bin/*
 	@file -L build/layer/bin/qpdf | grep -q 'ARM aarch64' || { echo "build/layer/bin/qpdf is not an aarch64 binary"; file -L build/layer/bin/qpdf; exit 1; }
+	touch $@
 
 build/layer.zip: build/layer/bin/qpdf
 	rm -f build/layer.zip

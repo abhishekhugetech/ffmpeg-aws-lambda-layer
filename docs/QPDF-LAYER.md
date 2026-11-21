@@ -10,7 +10,7 @@ This layer packages [qpdf](https://github.com/qpdf/qpdf) for AWS Lambda. qpdf is
 
 It is a **separate layer and stack** from ffmpeg. You can attach either one or both to a function.
 
-- **Target:** x86_64, Amazon Linux 2023 runtimes (`nodejs20.x`, `nodejs22.x`, `python3.12`, `python3.13`)
+- **Target:** arm64 (Graviton), Amazon Linux 2023 runtimes (`nodejs20.x`, `nodejs22.x`, `python3.12`, `python3.13`)
 - **qpdf version:** 12.4.2 (`QPDF_VERSION` in [qpdf-layer/Makefile](../qpdf-layer/Makefile))
 - **Size:** about 11 MB unzipped, about 4 MB zipped
 
@@ -56,7 +56,7 @@ You can override these variables: `STACK_NAME` (default `qpdf-lambda-layer`), `D
 
 ### Upgrading qpdf
 
-1. Find the new version on the [qpdf releases page](https://github.com/qpdf/qpdf/releases). Pick the asset named `qpdf-<ver>-bin-linux-x86_64.zip`.
+1. Find the new version on the [qpdf releases page](https://github.com/qpdf/qpdf/releases). Pick the asset named `qpdf-<ver>-bin-linux-aarch64.zip` (aarch64 is the same as arm64).
 2. Run `make clean deploy QPDF_VERSION=<ver>`, or edit the default in the Makefile first.
 3. You get a **new ARN** (version `N+1`). Update each function that uses the layer (see section 4).
 
@@ -64,7 +64,7 @@ The S3 key includes the version, so every upgrade really does create a new layer
 
 ## 4. Attach it to a Lambda function
 
-Requirements for the function: it must be **x86_64** and in the **same region** as the layer, and it should use one of the runtimes listed above.
+Requirements for the function: it must be **arm64** and in the **same region** as the layer, and it should use one of the runtimes listed above.
 
 ### a) AWS Console
 
@@ -96,7 +96,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: nodejs20.x
-      Architectures: [x86_64]
+      Architectures: [arm64]
       Handler: index.handler
       CodeUri: src
       Timeout: 60
@@ -157,7 +157,7 @@ Use `execFile` with an argument array, not `exec` with a string. Filenames and p
 
 ```bash
 cd qpdf-layer/test-layer
-make deploy    # deploys a nodejs20.x x86_64 function with the qpdf layer, plus the ffmpeg layer if its stack exists
+make deploy    # deploys a nodejs20.x arm64 function with the qpdf layer (add FFMPEG_LAYER_ARN=<arm64 ffmpeg arn> to test both)
 make invoke    # expect "all_passed": true
 make destroy   # remove the test stack
 ```
@@ -175,7 +175,7 @@ You can run the same handler locally without AWS:
 
 ```bash
 cd qpdf-layer
-docker run --rm --platform linux/amd64 -v "$PWD/build/layer:/opt:ro" -v "$PWD/test-layer:/var/task:ro" \
+docker run --rm --platform linux/arm64 -v "$PWD/build/layer:/opt:ro" -v "$PWD/test-layer:/var/task:ro" \
   --entrypoint /var/lang/bin/node public.ecr.aws/lambda/nodejs:20 \
   -e "import('/var/task/index.mjs').then(m=>m.handler()).then(r=>console.log(r.body))"
 ```
@@ -188,9 +188,9 @@ docker run --rm --platform linux/amd64 -v "$PWD/build/layer:/opt:ro" -v "$PWD/te
 | 2 | **250 MB unzipped limit** for the function code plus **all** of its layers. There is also a maximum of 5 layers per function. | Deploy fails with `Function code combined with layers exceeds the maximum allowed size`. | `make check-conflicts` prints the combined size. Measured: ffmpeg is about 179 MB and qpdf about 10 MB, **189 MB combined**, which leaves only about 60 MB for your function code and any other layers. Keep `node_modules` small, and don't bundle `@aws-sdk/*`, because the runtime already includes it. |
 | 3 | **The system libraries win over `/opt/lib`.** Lambda's `LD_LIBRARY_PATH` is `/var/lang/lib:/lib64:/usr/lib64:...:/opt/lib`, so `/opt/lib` is searched **last**. On AL2023, qpdf picks up the system copies of `libffi`, `libidn2`, `libtasn1`, `libunistring` and `libp11-kit` instead of the bundled ones. | Works on AL2023 (verified with `make verify-local`). It could break if a future runtime image ships incompatible versions of those libraries. | Re-run `make verify-local` after a qpdf upgrade or a runtime change. Don't put `/opt/lib` first in `LD_LIBRARY_PATH` globally: that would make Node itself load qpdf's gnutls and ffi. |
 | 4 | **glibc and runtime mismatch.** The prebuilt qpdf is tested on AL2023 only. The ffmpeg template also lists AL2 runtimes (`nodejs18.x`, `python3.10`, `python3.11`), but qpdf is not guaranteed to work on them. | `GLIBC_2.xx not found` or `error while loading shared libraries`. | Use `nodejs20.x` or newer, or `python3.12` or newer, for any function that uses qpdf. The qpdf template only lists AL2023 runtimes. |
-| 5 | **Architecture.** Both layers are x86_64 only. | `Exec format error` on an arm64 (Graviton) function. | Set `Architectures: [x86_64]`. An arm64 version would need the `bin-linux-aarch64.zip` asset and an arm64 ffmpeg build. |
+| 5 | **Architecture.** qpdf is arm64 only. The ffmpeg layer is still x86_64 only (BtbN `linux64`). | `Exec format error` when one function mixes them. | Use `Architectures: [arm64]` for qpdf. To use both in one function, build the ffmpeg layer from BtbN's `linuxarm64` tarball first. |
 | 6 | **Layer versions are immutable.** A redeploy creates a new ARN, and functions don't pick it up automatically. | You upgraded qpdf, but the function still runs the old version. | Redeploy the consuming stacks so they read the new ARN from the stack output. |
-| 7 | **A fixed S3 key means "no changes".** The ffmpeg flow always uploads to `ffmpeg-layer.zip`. If the CloudFormation parameters don't change, `cloudformation deploy` does nothing, even though the zip in S3 changed. | `No changes to deploy` after you changed `FFMPEG_URL`. | qpdf uses versioned keys (`qpdf-layer-12.4.2.zip`). For ffmpeg, pass a new key: `make deploy LAYER_ZIP_KEY=ffmpeg-layer-8.1.2.zip`. |
+| 7 | **A fixed S3 key means "no changes".** The ffmpeg flow always uploads to `ffmpeg-layer.zip`. If the CloudFormation parameters don't change, `cloudformation deploy` does nothing, even though the zip in S3 changed. | `No changes to deploy` after you changed `FFMPEG_URL`. | qpdf uses versioned keys that include the arch (`qpdf-layer-12.4.2-arm64.zip`). For ffmpeg, pass a new key: `make deploy LAYER_ZIP_KEY=ffmpeg-layer-8.1.2.zip`. |
 | 8 | **The ffmpeg stack deletes old versions.** The root `template.yaml` has no `Retain` policy, so each update deletes the previous ffmpeg layer version. | Existing functions keep working, but you can't attach the old version to anything new, so a rollback isn't possible. | qpdf uses `DeletionPolicy`/`UpdateReplacePolicy: Retain`. Consider adding the same to the ffmpeg template. |
 | 9 | **Layers are regional.** | `Layer version ... does not exist` or an access denied error. | Deploy the bucket, both layers and the function in one region. Use `--region` or set `AWS_REGION`. |
 | 10 | **`/tmp` and resources.** PDFs and videos are processed on disk in `/tmp`, which is 512 MB by default and is reused while a container stays warm. | `ENOSPC`, timeouts, or out-of-memory errors on large files. | Raise `EphemeralStorage` (up to 10 GB), `MemorySize` and `Timeout`. Delete the files in `/tmp` after each invocation. |

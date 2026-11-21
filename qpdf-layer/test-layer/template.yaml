@@ -10,7 +10,7 @@ Parameters:
   FFmpegLayerArn:
     Type: String
     Default: ''
-    Description: Optional ARN of the ffmpeg layer, to test both layers attached together
+    Description: Optional ARN of an arm64 ffmpeg layer, to test both layers attached together
 
 Conditions:
   HasFFmpeg: !Not [!Equals [!Ref FFmpegLayerArn, '']]
@@ -22,7 +22,7 @@ Resources:
       Handler: index.handler
       Runtime: nodejs20.x
       Architectures:
-        - x86_64
+        - arm64
       CodeUri: .
       Timeout: 60
       MemorySize: 512

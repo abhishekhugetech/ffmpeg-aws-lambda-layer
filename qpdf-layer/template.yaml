@@ -9,7 +9,7 @@ Parameters:
     Description: S3 bucket containing the layer zip
   LayerZipKey:
     Type: String
-    Description: S3 key for the layer zip (versioned, e.g. qpdf-layer-12.4.2.zip)
+    Description: S3 key for the layer zip (versioned, e.g. qpdf-layer-12.4.2-arm64.zip)
 
 Resources:
   QpdfLayer:
@@ -20,7 +20,7 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       LayerName: qpdf
-      Description: qpdf for AWS Lambda (x86_64, Amazon Linux 2023 runtimes)
+      Description: qpdf for AWS Lambda (arm64, Amazon Linux 2023 runtimes)
       Content:
         S3Bucket: !Ref DeploymentBucket
         S3Key: !Ref LayerZipKey
@@ -30,7 +30,7 @@ Resources:
         - python3.13
         - python3.12
       CompatibleArchitectures:
-        - x86_64
+        - arm64
       LicenseInfo: Apache-2.0
 
 Outputs:

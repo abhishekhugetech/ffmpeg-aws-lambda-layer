@@ -31,10 +31,10 @@ make deploy-example DEPLOYMENT_BUCKET=<bucket>
 # qpdf layer (qpdf-layer/): a separate layer and stack built the same way. Full guide: docs/QPDF-LAYER.md
 cd qpdf-layer
 make build/layer.zip     # download the pinned qpdf release (QPDF_VERSION) and zip it
-make verify-local        # ldd + qpdf --version inside the public.ecr.aws/lambda/nodejs:20 image (Docker/OrbStack)
+make verify-local        # ldd + qpdf --version inside the arm64 public.ecr.aws/lambda/nodejs:20 image (Docker/OrbStack)
 make check-conflicts     # fail on any path shared with ../build/layer (ffmpeg), print the combined size vs 250 MB
 make deploy DEPLOYMENT_BUCKET=<bucket>
-cd test-layer && make deploy && make invoke   # nodejs20.x test fn; also attaches ffmpeg if that stack exists
+cd test-layer && make deploy && make invoke   # arm64 nodejs20.x test fn; ffmpeg only if FFMPEG_LAYER_ARN is passed
 ```
 
 There are no unit tests or linters. Verify by deploying the layer, then running `test-layer` `make deploy && make invoke` and checking that `summary.all_passed` is true.
@@ -53,7 +53,7 @@ There are no unit tests or linters. Verify by deploying the layer, then running 
 - CloudFormation errors such as `UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS`: run `aws cloudformation wait stack-rollback-complete --stack-name ffmpeg-lambda-layer`, then `make clean` and redeploy.
 - `Uploaded file must be a non-empty zip` or `NoSuchKey`: the S3 artifact is stale or missing. Fix it with `make clean` and a redeploy.
 - `CompatibleRuntimes` in `template.yaml` lists python3.10–3.12 and nodejs18/20. Add new runtimes there.
-- qpdf layer: the S3 key includes the version (`qpdf-layer-$(QPDF_VERSION).zip`) so bumping the version actually creates a new LayerVersion. The ffmpeg flow uses a fixed key, so a redeploy with unchanged params is a no-op. The qpdf template retains old layer versions; the ffmpeg template does not.
-- qpdf targets x86_64 AL2023 runtimes only (nodejs20+/python3.12+). Its release zip bundles gnutls, nettle, jpeg and other libraries into `lib/`. Lambda searches `/opt/lib` *last*, so system copies in `/lib64` win where they exist. Both layers share `/opt`, so re-run `check-conflicts` after upgrading either one.
+- qpdf layer: the S3 key includes the version (`qpdf-layer-$(QPDF_VERSION)-arm64.zip`) so bumping the version actually creates a new LayerVersion. The ffmpeg flow uses a fixed key, so a redeploy with unchanged params is a no-op. The qpdf template retains old layer versions; the ffmpeg template does not.
+- qpdf targets **arm64** AL2023 runtimes only (nodejs20+/python3.12+), using the `bin-linux-aarch64.zip` asset. The ffmpeg layer is still x86_64, so the qpdf test fn no longer auto-attaches it; pass `FFMPEG_LAYER_ARN` for an arm64 ffmpeg build. Its release zip bundles gnutls, nettle, jpeg and other libraries into `lib/`. Lambda searches `/opt/lib` *last*, so system copies in `/lib64` win where they exist. Both layers share `/opt`, so re-run `check-conflicts` after upgrading either one.
 - `qpdf --empty` creates a zero-page PDF that `--check` rejects. qpdf exit code 3 means success with warnings.
 - License: FFmpeg GPL build, so `LicenseInfo: GPL-2.0-or-later`. The repo's own scripts are MIT.

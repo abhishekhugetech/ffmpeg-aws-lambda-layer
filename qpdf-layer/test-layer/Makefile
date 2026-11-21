@@ -1,6 +1,5 @@
 STACK_NAME ?= qpdf-layer-test
 QPDF_LAYER_STACK_NAME ?= qpdf-lambda-layer
-FFMPEG_LAYER_STACK_NAME ?= ffmpeg-lambda-layer
 DEPLOYMENT_BUCKET ?= lambda-layer-bucket-ffmpeg
 
 QPDF_LAYER_ARN := $(shell aws cloudformation describe-stacks \
@@ -8,11 +7,10 @@ QPDF_LAYER_ARN := $(shell aws cloudformation describe-stacks \
 	--query "Stacks[0].Outputs[?OutputKey=='LayerVersion'].OutputValue" \
 	--output text)
 
-# Optional: empty if the ffmpeg stack doesn't exist; the test then skips the ffmpeg check.
-FFMPEG_LAYER_ARN := $(shell aws cloudformation describe-stacks \
-	--stack-name $(FFMPEG_LAYER_STACK_NAME) \
-	--query "Stacks[0].Outputs[?OutputKey=='LayerVersion'].OutputValue" \
-	--output text 2>/dev/null)
+# Optional and empty by default. The test function is arm64, but the ffmpeg
+# stack in the repo root is x86_64, so attaching it would fail with
+# "Exec format error". Pass an arm64 ffmpeg layer ARN here once one exists.
+FFMPEG_LAYER_ARN ?=
 
 FUNC_NAME := $(shell aws cloudformation describe-stacks \
 	--stack-name $(STACK_NAME) \

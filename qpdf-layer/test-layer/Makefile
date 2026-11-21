@@ -1,6 +1,6 @@
 STACK_NAME ?= qpdf-layer-test
 QPDF_LAYER_STACK_NAME ?= qpdf-lambda-layer
-DEPLOYMENT_BUCKET ?= lambda-layer-bucket-ffmpeg
+DEPLOYMENT_BUCKET ?= lambda-layer-bucket-qpdf
 
 QPDF_LAYER_ARN := $(shell aws cloudformation describe-stacks \
 	--stack-name $(QPDF_LAYER_STACK_NAME) \

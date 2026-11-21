@@ -8,7 +8,7 @@ Make + CloudFormation scripts that package a prebuilt FFmpeg (BtbN/FFmpeg-Builds
 
 ## Commands
 
-All AWS commands use the local AWS CLI credentials. Default bucket: `lambda-layer-bucket-ffmpeg`. Default layer stack: `ffmpeg-lambda-layer`.
+All AWS commands use the local AWS CLI credentials. Default bucket: `lambda-layer-bucket-ffmpeg` (qpdf: `lambda-layer-bucket-qpdf`). Default layer stack: `ffmpeg-lambda-layer`.
 
 ```bash
 # Layer (repo root)

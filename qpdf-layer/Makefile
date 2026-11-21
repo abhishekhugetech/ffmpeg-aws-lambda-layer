@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 STACK_NAME ?= qpdf-lambda-layer
-DEPLOYMENT_BUCKET ?= lambda-layer-bucket-ffmpeg
+DEPLOYMENT_BUCKET ?= lambda-layer-bucket-qpdf
 QPDF_VERSION ?= 12.4.2
 # The layer targets arm64 (Graviton) Lambda. qpdf names that build "aarch64".
 QPDF_URL ?= https://github.com/qpdf/qpdf/releases/download/v$(QPDF_VERSION)/qpdf-$(QPDF_VERSION)-bin-linux-aarch64.zip

@@ -31,7 +31,7 @@ The qpdf release bundles its own libraries, which is why `lib/` contains more th
 
 - `make`, `curl`, `unzip`, `zip`, and `bash`
 - The AWS CLI, configured for the account and **region** where your functions run. Layers are regional.
-- An S3 bucket in that same region. The default is `lambda-layer-bucket-ffmpeg`, the same bucket the ffmpeg layer uses.
+- An S3 bucket in that same region. The default is `lambda-layer-bucket-qpdf`, separate from the ffmpeg bucket. Create it first, or pass `DEPLOYMENT_BUCKET=<bucket>`.
 - Optional: Docker or OrbStack, for `make verify-local`
 
 ## 3. Build and deploy
